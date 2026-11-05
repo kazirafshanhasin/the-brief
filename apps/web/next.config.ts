@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
   output: "export",
   basePath,
   assetPrefix: basePath || undefined,
+  // Without this, navigating to the home page requests /<repository>.txt, which is outside the site.
+  trailingSlash: true,
   // The shared package ships TypeScript source.
   transpilePackages: ["@brief/core"],
   poweredByHeader: false,

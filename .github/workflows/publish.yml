@@ -4,7 +4,8 @@ name: Publish
 # rebuild the static site with the fresh data and deploy it to GitHub Pages.
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    # Off the hour and half hour, when GitHub delays or drops the most scheduled runs.
+    - cron: "7,37 * * * *"
   workflow_dispatch:
 
 # Runs never overlap: a new run waits for the current one to finish.

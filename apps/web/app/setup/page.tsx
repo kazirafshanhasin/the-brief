@@ -49,10 +49,10 @@ export default function SetupPage() {
             <label htmlFor="lang">Reading language</label>
             <LanguageSelect value={language} onChange={setLanguage} />
             <p className="selected-line">
-              Major stories are translated. Others appear in English until a translation exists.
+              Stories appear in English until a translation exists.
             </p>
           </div>
-          <p className="note">Scheduled briefings and breaking alerts are available in the Android and iOS apps.</p>
+          <p className="note">Scheduled briefings and breaking alerts aren’t available on the website.</p>
         </>
       )}
 
