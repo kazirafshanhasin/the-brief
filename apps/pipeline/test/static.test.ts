@@ -8,6 +8,7 @@ import { FileStore } from "../src/fileStore";
 import type { NewArticle } from "../src/normalize";
 import { runPipeline } from "../src/pipeline";
 import { buildStaticData, writeStaticData } from "../src/staticData";
+import { extractSummary } from "../src/stats";
 import type { SummaryRow } from "../src/store";
 
 const NOW = new Date("2026-11-04T12:00:00Z");
@@ -161,6 +162,82 @@ describe("static data writer", () => {
     writeStaticData(dir, buildStaticData(store, NOW));
     expect(existsSync(join(dir, "story", "aged.json"))).toBe(false);
     expect(existsSync(join(dir, "story", "fresh.json"))).toBe(true);
+  });
+});
+
+describe("extractive summaries", () => {
+  it("takes up to three clean sentences in the publisher's words", () => {
+    const excerpt = "The central bank raised rates to 10 percent. Exporters warned of higher costs for factories. Traders expect more rises this year. Officials will meet again in March.";
+    expect(extractSummary([excerpt], "Rates up")).toBe("The central bank raised rates to 10 percent. Exporters warned of higher costs for factories. Traders expect more rises this year.");
+  });
+  it("drops boilerplate, truncated text, links, first person and headline repeats", () => {
+    const excerpt = "Dhaka opens new metro line. The line carries 60,000 people a day. We are very proud of this project. See https://x.example/more for details. The post Metro appeared first on Example. It will extend to the airport and then…";
+    expect(extractSummary([excerpt], "Dhaka opens new metro line")).toBe("The line carries 60,000 people a day.");
+  });
+  it("treats bullets as sentence breaks and ends unpunctuated excerpts properly", () => {
+    expect(extractSummary(["• Minister says the facility is not essential • Further bond issues are planned"], "Facility wanes")).toBe(
+      "Minister says the facility is not essential. Further bond issues are planned.",
+    );
+  });
+  it("keeps sentences about the US, and drops navigation text and opening fragments", () => {
+    expect(extractSummary(["The US raised tariffs on steel imports. Live results | Losses mapped . And what that could mean for prices."], "Tariffs")).toBe(
+      "The US raised tariffs on steel imports.",
+    );
+  });
+  it("uses one publisher's words, preferring one with several sentences, and gives up with nothing usable", () => {
+    expect(extractSummary(["Votes are being counted across the country.", "A record number of people registered to vote. Results are due by Friday.", "Polls closed at seven in the evening. Turnout was high everywhere."], "Vote count")).toBe(
+      "A record number of people registered to vote. Results are due by Friday.",
+    );
+    expect(extractSummary(["Votes are being counted across the country."], "Vote count")).toBe("Votes are being counted across the country.");
+    expect(extractSummary(["Same words as the title here"], "Same words as the title here")).toBeNull();
+    expect(extractSummary([], "Anything")).toBeNull();
+  });
+  it("writes summaries in a pipeline run, with headline-only when a feed has no text", async () => {
+    const store = new FileStore(tempDir(), () => NOW);
+    const item = (title: string, link: string, description: string) =>
+      `<item><title>${title}</title><link>https://one.example/${link}</link><description><![CDATA[${description}]]></description><pubDate>${NOW.toUTCString()}</pubDate></item>`;
+    const feed = `<rss version="2.0"><channel>${item("Dhaka opens new metro line", "a", "<p>Line carries commuters</p> <p>The new line links the north of the city to the centre. Trains run every ten minutes.</p>")}${item("Parliament passes annual budget today", "b", "")}</channel></rss>`;
+    let n = 0;
+    const report = await runPipeline(
+      {
+        supabaseUrl: "", supabaseKey: "", dryRun: false, userAgent: "test", translateLanguages: [], sources: [source("one")],
+        ai: { provider: "extractive", apiKey: "", model: "", baseUrl: "", dailyCallCap: 0, maxSummariesPerRun: 0 },
+        gdelt: { enabled: false, timespan: "2h", max_records: 10, queries: [] },
+      },
+      { store, model: null, now: () => NOW, newId: () => `id${++n}`, log: () => {}, fetchText: async () => ({ status: 200, text: feed }) },
+    );
+    expect(report).toMatchObject({ summaries_written: 1, headline_only: 1, ai_calls: 0 });
+    const rows = [...store.summaries.values()];
+    expect(rows.find((s) => s.headline.startsWith("Dhaka"))).toMatchObject({
+      kind: "summary", model: "extractive", validation_status: "approved",
+      summary: "Line carries commuters. The new line links the north of the city to the centre. Trains run every ten minutes.",
+    });
+    expect(rows.find((s) => s.headline.startsWith("Parliament"))).toMatchObject({ kind: "headline_only", summary: null });
+  });
+  it("upgrades stories saved earlier as headline-only, with no new reports", async () => {
+    const dir = tempDir();
+    const feed = `<rss version="2.0"><channel><item><title>Dhaka opens new metro line</title><link>https://one.example/a</link><description>The new line links the north of the city to the centre.</description><pubDate>${NOW.toUTCString()}</pubDate></item></channel></rss>`;
+    let n = 0;
+    const run = async (provider: PipelineConfig["ai"]["provider"]) => {
+      const store = new FileStore(dir, () => NOW);
+      const report = await runPipeline(
+        {
+          supabaseUrl: "", supabaseKey: "", dryRun: false, userAgent: "test", translateLanguages: [], sources: [source("one")],
+          ai: { provider, apiKey: "", model: "", baseUrl: "", dailyCallCap: 0, maxSummariesPerRun: 0 },
+          gdelt: { enabled: false, timespan: "2h", max_records: 10, queries: [] },
+        },
+        { store, model: null, now: () => NOW, newId: () => `id${++n}`, log: () => {}, fetchText: async () => ({ status: 200, text: feed }) },
+      );
+      store.save();
+      return { report, store };
+    };
+
+    expect((await run("none")).report).toMatchObject({ headline_only: 1, summaries_written: 0 });
+    const { report, store } = await run("extractive");
+    expect(report).toMatchObject({ new_articles: 0, stories_touched: 0, summaries_written: 1 });
+    expect([...store.summaries.values()]).toHaveLength(1);
+    expect([...store.summaries.values()][0]).toMatchObject({ kind: "summary", summary: "The new line links the north of the city to the centre." });
+    expect((await run("extractive")).report.summaries_written).toBe(0);
   });
 });
 

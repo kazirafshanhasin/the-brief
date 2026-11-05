@@ -16,7 +16,7 @@ async function main() {
       ? new FileStore(cfg.dataDir)
       : new SupabaseStore(new SupabaseRest(cfg.supabaseUrl, cfg.supabaseKey));
   const model = createModel(cfg.ai);
-  if (!model) console.log("AI_PROVIDER not configured: stories will be published as headline-only entries.");
+  if (!model && cfg.ai.provider !== "extractive") console.log("AI_PROVIDER not configured: stories will be published as headline-only entries.");
 
   const report = await runPipeline(cfg, {
     store,

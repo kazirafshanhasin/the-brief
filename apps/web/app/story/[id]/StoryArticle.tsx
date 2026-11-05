@@ -31,7 +31,7 @@ export function StoryArticle({ story }: { story: StaticStoryDetail }) {
         <SaveButton story={{ id: story.id, headline, summary, where }} />
       </div>
       {summary ? (
-        <p className="selected-line">Summary written from the publishers’ own excerpts, linked below.</p>
+        <p className="selected-line">Summary taken from the publishers’ own excerpts, linked below.</p>
       ) : null}
     </article>
   );

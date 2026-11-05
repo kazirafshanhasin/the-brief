@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "The Brief — just the news", template: "%s — The Brief" },
-  description: "Worldwide news from the countries and topics you choose, attributed to its publishers. No account, no ads.",
+  description: "Worldwide news from the countries and topics you choose, in a few sentences. No account, no ads.",
   applicationName: "The Brief",
   referrer: "strict-origin-when-cross-origin",
 };

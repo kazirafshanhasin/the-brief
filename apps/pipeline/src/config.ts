@@ -30,7 +30,8 @@ export interface PipelineConfig {
   supabaseUrl: string;
   supabaseKey: string;
   ai: {
-    provider: "anthropic" | "openai" | "none";
+    /** extractive: no model; summaries are sentences taken from the publishers' excerpts. */
+    provider: "anthropic" | "openai" | "extractive" | "none";
     apiKey: string;
     model: string;
     baseUrl: string;
@@ -74,7 +75,7 @@ export function loadConfig(argv: string[] = process.argv, env: NodeJS.ProcessEnv
     return v ?? "";
   };
   const provider = (env.AI_PROVIDER || "none") as PipelineConfig["ai"]["provider"];
-  if (!["anthropic", "openai", "none"].includes(provider)) throw new Error(`AI_PROVIDER must be anthropic, openai or none`);
+  if (!["anthropic", "openai", "extractive", "none"].includes(provider)) throw new Error(`AI_PROVIDER must be anthropic, openai, extractive or none`);
   return {
     supabaseUrl: need("SUPABASE_URL"),
     supabaseKey: need("SUPABASE_SECRET_KEY"),

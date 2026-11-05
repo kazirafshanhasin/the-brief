@@ -19,7 +19,7 @@ export default function PrivacyPage() {
         <p>The site is hosted on GitHub Pages. As the host, GitHub may process technical data such as your IP address to deliver the site and keep it secure. See the <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub Privacy Statement</a>. Links to stories take you to the publishers’ own sites, which have their own policies.</p>
 
         <h2>News and AI</h2>
-        <p>Stories come from publishers’ public news feeds. AI summaries are currently turned off, so no AI provider is used. Stories appear as headlines linked to their publishers.</p>
+        <p>Stories come from publishers’ public news feeds. Summaries are taken automatically from the publishers’ own feed excerpts, and every story links to its publisher. No AI provider is used.</p>
 
         <h2>Deleting your data</h2>
         <p>In Settings, “Erase my data” deletes your preferences and saved stories from this browser. Clearing this site’s data in your browser does the same.</p>

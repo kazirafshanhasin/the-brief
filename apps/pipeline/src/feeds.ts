@@ -63,7 +63,11 @@ export function parseFeed(xml: string): FeedItem[] {
     const title = stripHtml(text(it.title));
     const link = kind === "atom" ? atomLink(it.link) : text(it.link) || text(it.guid);
     const description = stripHtml(
-      text(kind === "atom" ? (it.summary ?? it.content) : (it.description ?? it.encoded ?? it.summary)),
+      // Keep paragraph breaks as sentence breaks: stripping tags would run an unpunctuated standfirst into the body.
+      text(kind === "atom" ? (it.summary ?? it.content) : (it.description ?? it.encoded ?? it.summary)).replace(
+        /([^.!?:;…"'”’\s])\s*<\/(p|li|h[1-6])>\s*<(p|ul|ol|li|h[1-6])\b/gi,
+        "$1. <$3",
+      ),
     );
     const published = toIso(text(it.pubDate ?? it.published ?? it.updated ?? it.date));
     if (!title || !/^https?:\/\//.test(link)) continue;

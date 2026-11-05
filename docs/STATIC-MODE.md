@@ -1,7 +1,7 @@
 # GitHub-only static mode
 
 The public website runs on GitHub alone: no Supabase, Cloudflare, or API keys.
-`.github/workflows/publish.yml` runs every 30 minutes and on demand:
+`.github/workflows/publish.yml` runs every hour and on demand:
 
 1. Runs `apps/pipeline` with `FileStore`, which reads and writes JSON instead of a database.
 2. Commits the working state to the `news-data` branch, in `state/`. The branch has one rolling
@@ -16,14 +16,19 @@ The public website runs on GitHub alone: no Supabase, Cloudflare, or API keys.
 The browser fetches `stories.json` and ranks it with `rankFeed` using the reader's saved countries
 and topics. Story pages are pre-rendered, so they keep their SEO metadata.
 
-## AI summaries are off
+## Summaries
 
 GitHub Models was retired on 30 July 2026, so no model is available with `GITHUB_TOKEN` alone. The
-workflow defaults to `AI_PROVIDER=none`, and stories appear as labeled headline-only entries. The
+workflow defaults to `AI_PROVIDER=extractive`: a summary is up to three clean sentences in one
+publisher's own words, taken from its permitted feed excerpt. Nothing is generated, so nothing can
+be invented, and every story links to its publisher.
+
+Summaries are only as long as the feeds allow. Many publishers send a single sentence, so those
+summaries have one sentence. A story with no usable feed text is a labeled headline-only entry. The
 pipeline never writes a summary from a headline.
 
-To turn summaries on with another provider, add these under **Settings → Secrets and variables →
-Actions**. All editorial rules still apply.
+To use an AI provider instead, add these under **Settings → Secrets and variables → Actions**. All
+editorial rules still apply.
 
 - Secret: `AI_API_KEY`
 - Variables: `AI_PROVIDER` (`openai` or `anthropic`), `AI_MODEL`, and optionally `AI_BASE_URL`,

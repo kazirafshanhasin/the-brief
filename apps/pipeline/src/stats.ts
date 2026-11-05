@@ -6,6 +6,7 @@ import {
   independentSourceCount,
   isTopicId,
   normalizeText,
+  splitSentences,
   type TopicId,
 } from "@brief/core";
 
@@ -115,6 +116,38 @@ export function authorizedExcerpts(c: ClusterState): ClusterArticle[] {
     .filter((a) => a.excerpt && a.source && a.source.rights !== "headline_link")
     .sort((a, b) => (b.source?.trust_score ?? 0) - (a.source?.trust_score ?? 0))
     .slice(0, 5);
+}
+
+const EXTRACT_MAX_SENTENCES = 3;
+const EXTRACT_MAX_WORDS = 80;
+const LINK = "LINKREMOVED";
+const EXTRACT_BOILERPLATE = /appeared first on|continue reading|read more|click here|LINKREMOVED|\||(…|\.\.\.)$/i;
+const EXTRACT_FRAGMENT = /^(And|But|Or)\b|\b(I|We|we|Our|our|us)\b/;
+
+function cleanSentences(excerpt: string, title: string): string[] {
+  const picked: string[] = [];
+  let words = 0;
+  const text = excerpt.replace(/(https?:\/\/|www\.)\S+/g, LINK).replace(/\s*•\s*/g, ". ").replace(/\s+([.,;:!?])/g, "$1");
+  for (const sentence of splitSentences(text)) {
+    const count = sentence.split(/\s+/).length;
+    const normalized = normalizeText(sentence);
+    if (sentence.length < 20 || count > SUMMARY_RULES.maxWordsPerSentence || EXTRACT_BOILERPLATE.test(sentence) || EXTRACT_FRAGMENT.test(sentence)) continue;
+    if (title.includes(normalized)) continue;
+    if (picked.length >= EXTRACT_MAX_SENTENCES || words + count > EXTRACT_MAX_WORDS) break;
+    picked.push(/[.!?"'”’)]$/.test(sentence) ? sentence : `${sentence}.`);
+    words += count;
+  }
+  return picked;
+}
+
+/**
+ * A short summary in one publisher's own words, from permitted excerpts in trust order. Nothing is
+ * generated, so nothing can be invented. Null when no clean sentence is left: the story stays headline-only.
+ */
+export function extractSummary(excerpts: string[], headline: string): string | null {
+  const title = normalizeText(headline);
+  const options = excerpts.map((e) => cleanSentences(e, title));
+  return (options.find((o) => o.length >= 2) ?? options.find((o) => o.length > 0))?.join(" ") ?? null;
 }
 
 export function canSummarize(c: ClusterState): boolean {

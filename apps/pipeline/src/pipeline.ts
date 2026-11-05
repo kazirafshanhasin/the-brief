@@ -9,6 +9,7 @@ import {
   canPublishHeadlineOnly,
   canSummarize,
   computeClusterStats,
+  extractSummary,
   needsSummary,
   type ClusterState,
   type ClusterStats,
@@ -140,9 +141,12 @@ export async function runPipeline(cfg: PipelineConfig, deps: PipelineDeps): Prom
   report.new_stories = firstSeen.size;
   const touchedIds = [...new Set(fresh.map((a) => assignment.get(a.id)).filter((x): x is string => Boolean(x)))];
   report.stories_touched = touchedIds.length;
+  const extractive = cfg.ai.provider === "extractive";
+  // Extractive summaries cost nothing, so recent headline-only stories get another chance on every run.
+  const storyIds = extractive ? [...new Set([...touchedIds, ...recent.flatMap((a) => a.cluster_id ?? [])])] : touchedIds;
 
   // 5. Classify + recompute stats -----------------------------------------------------
-  const clusters = await store.loadClusters(touchedIds);
+  const clusters = await store.loadClusters(storyIds);
   const stats = new Map<string, ClusterStats>();
   for (const c of clusters) {
     const s = computeClusterStats(c);
@@ -151,13 +155,16 @@ export async function runPipeline(cfg: PipelineConfig, deps: PipelineDeps): Prom
   }
 
   // 6. Summarize (budgeted) -----------------------------------------------------------
-  const summariesBy = await store.summaryLanguages(touchedIds);
+  const summariesBy = await store.summaryLanguages(storyIds);
   let callsToday = await store.aiCallsToday();
   const usage = { calls: 0, input: 0, output: 0 };
   const budgetLeft = () => callsToday + usage.calls < cfg.ai.dailyCallCap;
 
   const queue = clusters
-    .filter((c) => needsSummary(c, stats.get(c.id)!, summariesBy.get(c.id)?.find((s) => s.language === REFERENCE_LANGUAGE)))
+    .filter((c) => {
+      const existing = summariesBy.get(c.id)?.find((s) => s.language === REFERENCE_LANGUAGE);
+      return needsSummary(c, stats.get(c.id)!, existing) || (extractive && existing?.kind === "headline_only" && authorizedExcerpts(c).length > 0);
+    })
     .sort((a, b) => stats.get(b.id)!.importance - stats.get(a.id)!.importance || b.articles.length - a.articles.length);
 
   let aiWrites = 0;
@@ -213,6 +220,19 @@ export async function runPipeline(cfg: PipelineConfig, deps: PipelineDeps): Prom
       }
     }
 
+    if (extractive) {
+      const summary = extractSummary(authorizedExcerpts(c).map((a) => a.excerpt ?? ""), lead.headline);
+      if (summary) {
+        await store.upsertSummary({
+          story_id: c.id, language: c.language, headline: lead.headline, summary, kind: "summary",
+          validation_status: "approved", validation_errors: [], model: "extractive",
+        });
+        await store.updateCluster(c.id, { summarized_article_count: st.article_count });
+        report.summaries_written++;
+        wrote = true;
+      }
+    }
+
     if (!wrote) {
       // Never invent a summary from a headline: publish a labeled headline-only entry, or nothing.
       const existingEn = summariesBy.get(c.id)?.find((s) => s.language === REFERENCE_LANGUAGE);
@@ -263,7 +283,7 @@ export async function runPipeline(cfg: PipelineConfig, deps: PipelineDeps): Prom
   callsToday += usage.calls;
 
   // 8. Breaking-news decisions (delivery happens in the API worker) -----------------------
-  const finalSummaries = await store.summaryLanguages(touchedIds);
+  const finalSummaries = await store.summaryLanguages(storyIds);
   for (const c of clusters) {
     if (c.breaking_status !== "none") continue;
     const st = stats.get(c.id)!;

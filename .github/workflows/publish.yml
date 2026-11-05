@@ -4,8 +4,8 @@ name: Publish
 # rebuild the static site with the fresh data and deploy it to GitHub Pages.
 on:
   schedule:
-    # Off the hour and half hour, when GitHub delays or drops the most scheduled runs.
-    - cron: "7,37 * * * *"
+    # Hourly, off the hour, when GitHub delays or drops the most scheduled runs.
+    - cron: "7 * * * *"
   workflow_dispatch:
 
 # Runs never overlap: a new run waits for the current one to finish.
@@ -41,9 +41,10 @@ jobs:
           DATA_DIR: ${{ github.workspace }}/.news-data/state
           PUBLIC_DATA_DIR: ${{ github.workspace }}/apps/web/public/data
           BOT_USER_AGENT: ${{ vars.BOT_USER_AGENT || format('TheBriefBot/0.1 (+https://github.com/{0})', github.repository) }}
-          # Off by default: GitHub Models was retired on 2026-07-30 and this cycle needs no other account.
-          # To enable another provider, set these variables and the AI_API_KEY secret.
-          AI_PROVIDER: ${{ vars.AI_PROVIDER || 'none' }}
+          # extractive: summaries are sentences from the publishers' excerpts, with no model or account.
+          # GitHub Models was retired on 2026-07-30. To use an AI provider instead, set these
+          # variables and the AI_API_KEY secret.
+          AI_PROVIDER: ${{ vars.AI_PROVIDER || 'extractive' }}
           AI_MODEL: ${{ vars.AI_MODEL }}
           AI_BASE_URL: ${{ vars.AI_BASE_URL }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}

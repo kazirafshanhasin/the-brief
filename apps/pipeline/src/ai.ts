@@ -18,7 +18,7 @@ export type ModelCall = (system: string, user: string, maxTokens: number) => Pro
 
 /** Provider-agnostic model call. Anthropic Messages API or any OpenAI-compatible chat endpoint. */
 export function createModel(ai: PipelineConfig["ai"]): ModelCall | null {
-  if (ai.provider === "none" || !ai.apiKey || !ai.model) return null;
+  if (ai.provider === "none" || ai.provider === "extractive" || !ai.apiKey || !ai.model) return null;
   if (ai.provider === "anthropic") {
     return async (system, user, maxTokens) => {
       const res = await fetch(`${ai.baseUrl.replace(/\/+$/, "")}/v1/messages`, {
