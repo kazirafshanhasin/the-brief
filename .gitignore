@@ -1,0 +1,30 @@
+node_modules/
+.env
+.env.local
+.dev.vars
+*.log
+.DS_Store
+
+# Next.js / OpenNext
+apps/web/.next/
+apps/web/.open-next/
+apps/web/out/
+apps/web/tsconfig.tsbuildinfo
+# Written by the pipeline on every run
+apps/web/public/data/
+.news-data/
+
+# Wrangler
+.wrangler/
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/expo-env.d.ts
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision

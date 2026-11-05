@@ -1,0 +1,25 @@
+{
+  "name": "the-brief",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The Brief — a minimalist, worldwide, personalized news platform (web, Android, iOS).",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "pipeline": "npm run run --workspace @brief/pipeline",
+    "dev:web": "npm run dev --workspace @brief/web",
+    "dev:api": "npm run dev --workspace @brief/api",
+    "dev:mobile": "npm run start --workspace @brief/mobile"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

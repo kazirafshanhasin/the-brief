@@ -1,0 +1,22 @@
+{
+  // Cloudflare Worker: public read API, anonymous installations, and the per-minute
+  // notification dispatcher (scheduled digests + approved breaking alerts).
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "the-brief-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "triggers": {
+    // Every minute, so digests arrive at the exact local time readers chose.
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    // Comma-separated origins allowed to call the API from a browser.
+    "ALLOWED_ORIGINS": "http://localhost:3000"
+  }
+  // Secrets (set with `npx wrangler secret put NAME`):
+  //   SUPABASE_URL          https://<project>.supabase.co
+  //   SUPABASE_SECRET_KEY   sb_secret_… (or the legacy service_role key)
+  //   EXPO_ACCESS_TOKEN     optional; required only if you enable "enhanced push security" in Expo
+}

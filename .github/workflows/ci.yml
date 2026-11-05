@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck all packages
+        run: npm run typecheck
+      - name: Unit tests (core, pipeline, api)
+        run: npm test
+      - name: Build website
+        run: npm run build --workspace @brief/web
+      - name: Check config sources file parses
+        run: node -e "JSON.parse(require('fs').readFileSync('config/sources.json','utf8'))"

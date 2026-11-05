@@ -1,0 +1,25 @@
+{
+  "name": "@brief/pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "News ingestion and editorial pipeline. Runs on a schedule in GitHub Actions.",
+  "scripts": {
+    "run": "tsx src/run.ts",
+    "dry-run": "tsx src/run.ts --dry-run",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p .",
+    "run:local": "tsx --env-file=.env src/run.ts",
+    "dry-run:local": "tsx src/run.ts --dry-run"
+  },
+  "dependencies": {
+    "@brief/core": "*",
+    "fast-xml-parser": "^5.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

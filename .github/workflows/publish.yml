@@ -1,0 +1,98 @@
+name: Publish
+
+# The whole GitHub-only cycle: fetch the news, keep the working state on the news-data branch,
+# rebuild the static site with the fresh data and deploy it to GitHub Pages.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+# Runs never overlap: a new run waits for the current one to finish.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write # commit the working state to news-data
+      pages: read # configure-pages reads the site's base path
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          ref: news-data
+          path: .news-data
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      # Skips Expo and the API Worker.
+      - run: npm ci --workspace @brief/pipeline --workspace @brief/web --include-workspace-root
+
+      - name: Run pipeline
+        run: npm run run --workspace @brief/pipeline
+        env:
+          DATA_DIR: ${{ github.workspace }}/.news-data/state
+          PUBLIC_DATA_DIR: ${{ github.workspace }}/apps/web/public/data
+          BOT_USER_AGENT: ${{ vars.BOT_USER_AGENT || format('TheBriefBot/0.1 (+https://github.com/{0})', github.repository) }}
+          # Off by default: GitHub Models was retired on 2026-07-30 and this cycle needs no other account.
+          # To enable another provider, set these variables and the AI_API_KEY secret.
+          AI_PROVIDER: ${{ vars.AI_PROVIDER || 'none' }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_DAILY_CALL_CAP: ${{ vars.AI_DAILY_CALL_CAP }}
+          MAX_SUMMARIES_PER_RUN: ${{ vars.MAX_SUMMARIES_PER_RUN }}
+          TRANSLATE_LANGUAGES: ${{ vars.TRANSLATE_LANGUAGES }}
+
+      # One rolling commit: every run rewrites several MB of JSON, so keeping each one would
+      # bloat the repository past GitHub's size guidance within weeks.
+      - name: Commit working state to news-data
+        working-directory: .news-data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit --amend --allow-empty --reset-author -m "News state $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force origin HEAD:news-data
+
+      - id: pages
+        uses: actions/configure-pages@v6
+      - name: Build site
+        run: npm run build --workspace @brief/web
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/web/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  # GitHub turns off schedules after 60 days without repository activity. Re-enabling resets that.
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/publish.yml/enable"
+        env:
+          GH_TOKEN: ${{ github.token }}

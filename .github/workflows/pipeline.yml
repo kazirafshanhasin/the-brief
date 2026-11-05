@@ -1,0 +1,43 @@
+name: News pipeline
+
+# Supabase version of the pipeline, for the future app setup. Its schedule is off: publish.yml runs
+# the website's cycle, and this needs Supabase secrets. To use it, restore:
+#   schedule:
+#     - cron: "17 * * * *"
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run (fetch and summarize in memory, write nothing)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: news-pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Install only what the pipeline needs (skips Next.js and Expo).
+      - run: npm ci --workspace @brief/pipeline --include-workspace-root
+      - name: Run pipeline
+        run: npm run ${{ inputs.dry_run && 'dry-run' || 'run' }} --workspace @brief/pipeline
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          AI_PROVIDER: ${{ vars.AI_PROVIDER }}
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_DAILY_CALL_CAP: ${{ vars.AI_DAILY_CALL_CAP }}
+          MAX_SUMMARIES_PER_RUN: ${{ vars.MAX_SUMMARIES_PER_RUN }}
+          TRANSLATE_LANGUAGES: ${{ vars.TRANSLATE_LANGUAGES }}
+          BOT_USER_AGENT: ${{ vars.BOT_USER_AGENT }}

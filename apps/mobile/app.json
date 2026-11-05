@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "The Brief",
+    "slug": "the-brief",
+    "scheme": "thebrief",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#FAF9F6",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF9F6",
+      "dark": { "image": "./assets/splash-icon.png", "backgroundColor": "#121211" }
+    },
+    "ios": {
+      "bundleIdentifier": "com.example.thebrief",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.example.thebrief",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF9F6",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#263F63",
+          "defaultChannel": "digest"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false
+    },
+    "extra": {
+      "apiUrl": "https://the-brief-api.YOUR-SUBDOMAIN.workers.dev",
+      "eas": {
+        "projectId": "REPLACE-WITH-EAS-PROJECT-ID"
+      }
+    }
+  }
+}
